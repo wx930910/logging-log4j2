@@ -17,144 +17,49 @@
 
 package org.apache.logging.log4j.core.appender.rolling.action;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 /**
  * Tests the {@code DeletingVisitor} class.
  */
 public class DeletingVisitorTest {
-    /**
-     * Modifies {@code DeletingVisitor} for testing: instead of actually deleting a file, it adds the path to a list for
-     * later verification.
-     */
-    static class DeletingVisitorHelper extends DeletingVisitor {
-        List<Path> deleted = new ArrayList<>();
+	/**
+	 * Modifies {@code DeletingVisitor} for testing: instead of actually deleting a
+	 * file, it adds the path to a list for later verification.
+	 */
+	static class DeletingVisitorHelper extends DeletingVisitor {
+		List<Path> deleted = new ArrayList<>();
 
-        public DeletingVisitorHelper(final Path basePath, final List<? extends PathCondition> pathFilters,
-                final boolean testMode) {
-            super(basePath, pathFilters, testMode);
-        }
+		public DeletingVisitorHelper(final Path basePath, final List<? extends PathCondition> pathFilters,
+				final boolean testMode) {
+			super(basePath, pathFilters, testMode);
+		}
 
-        @Override
-        protected void delete(final Path file) throws IOException {
-            deleted.add(file); // overrides and stores path instead of deleting
-        }
-    }
+		@Override
+		protected void delete(final Path file) throws IOException {
+			deleted.add(file); // overrides and stores path instead of deleting
+		}
+	}
 
-    @Test
-    public void testAcceptedFilesAreDeleted() throws IOException {
-        final Path base = Paths.get("/a/b/c");
-        final FixedCondition ACCEPT_ALL = new FixedCondition(true);
-        final DeletingVisitorHelper visitor = new DeletingVisitorHelper(base, Collections.singletonList(ACCEPT_ALL), false);
+	@Test
+	public void testAcceptedFilesAreDeleted() throws IOException {
+		final Path base = Paths.get("/a/b/c");
+		final FixedCondition ACCEPT_ALL = new FixedCondition(true);
+		final DeletingVisitorHelper visitor = new DeletingVisitorHelper(base, Collections.singletonList(ACCEPT_ALL),
+				false);
 
-        final Path any = Paths.get("/a/b/c/any");
-        visitor.visitFile(any, null);
-        assertTrue(visitor.deleted.contains(any));
-    }
+		final Path any = Paths.get("/a/b/c/any");
+		visitor.visitFile(any, null);
+		assertTrue(visitor.deleted.contains(any));
+	}
 
-    @Test
-    public void testRejectedFilesAreNotDeleted() throws IOException {
-        final Path base = Paths.get("/a/b/c");
-        final FixedCondition REJECT_ALL = new FixedCondition(false);
-        final DeletingVisitorHelper visitor = new DeletingVisitorHelper(base, Collections.singletonList(REJECT_ALL), false);
-
-        final Path any = Paths.get("/a/b/c/any");
-        visitor.visitFile(any, null);
-        assertFalse(visitor.deleted.contains(any));
-    }
-
-    @Test
-    public void testAllFiltersMustAcceptOrFileIsNotDeleted() throws IOException {
-        final Path base = Paths.get("/a/b/c");
-        final FixedCondition ACCEPT_ALL = new FixedCondition(true);
-        final FixedCondition REJECT_ALL = new FixedCondition(false);
-        final List<? extends PathCondition> filters = Arrays.asList(ACCEPT_ALL, ACCEPT_ALL, REJECT_ALL);
-        final DeletingVisitorHelper visitor = new DeletingVisitorHelper(base, filters, false);
-
-        final Path any = Paths.get("/a/b/c/any");
-        visitor.visitFile(any, null);
-        assertFalse(visitor.deleted.contains(any));
-    }
-
-    @Test
-    public void testIfAllFiltersAcceptFileIsDeleted() throws IOException {
-        final Path base = Paths.get("/a/b/c");
-        final FixedCondition ACCEPT_ALL = new FixedCondition(true);
-        final List<? extends PathCondition> filters = Arrays.asList(ACCEPT_ALL, ACCEPT_ALL, ACCEPT_ALL);
-        final DeletingVisitorHelper visitor = new DeletingVisitorHelper(base, filters, false);
-
-        final Path any = Paths.get("/a/b/c/any");
-        visitor.visitFile(any, null);
-        assertTrue(visitor.deleted.contains(any));
-    }
-
-    @Test
-    public void testInTestModeFileIsNotDeletedEvenIfAllFiltersAccept() throws IOException {
-        final Path base = Paths.get("/a/b/c");
-        final FixedCondition ACCEPT_ALL = new FixedCondition(true);
-        final List<? extends PathCondition> filters = Arrays.asList(ACCEPT_ALL, ACCEPT_ALL, ACCEPT_ALL);
-        final DeletingVisitorHelper visitor = new DeletingVisitorHelper(base, filters, true);
-
-        final Path any = Paths.get("/a/b/c/any");
-        visitor.visitFile(any, null);
-        assertFalse(visitor.deleted.contains(any));
-    }
-
-    @Test
-    public void testVisitFileRelativizesAgainstBase() throws IOException {
-
-        final PathCondition filter = new PathCondition() {
-
-            @Override
-            public boolean accept(final Path baseDir, final Path relativePath, final BasicFileAttributes attrs) {
-                final Path expected = Paths.get("relative");
-                assertEquals(expected, relativePath);
-                return true;
-            }
-
-            @Override
-            public void beforeFileTreeWalk() {
-            }
-        };
-        final Path base = Paths.get("/a/b/c");
-        final DeletingVisitorHelper visitor = new DeletingVisitorHelper(base, Collections.singletonList(filter), false);
-
-        final Path child = Paths.get("/a/b/c/relative");
-        visitor.visitFile(child, null);
-    }
-
-    @Test
-    public void testNoSuchFileFailure() throws IOException {
-        final DeletingVisitorHelper visitor =
-                new DeletingVisitorHelper(Paths.get("/a/b/c"), Collections.emptyList(), true);
-        assertEquals(
-                FileVisitResult.CONTINUE,
-                visitor.visitFileFailed(Paths.get("doesNotExist"), new NoSuchFileException("doesNotExist")));
-    }
-
-    @Test
-    public void testIOException() {
-        final DeletingVisitorHelper visitor =
-                new DeletingVisitorHelper(Paths.get("/a/b/c"), Collections.emptyList(), true);
-        IOException exception = new IOException();
-        try {
-            visitor.visitFileFailed(Paths.get("doesNotExist"), exception);
-            fail();
-        } catch (IOException e) {
-            assertSame(exception, e);
-        }
-    }
 }
