@@ -27,39 +27,28 @@ import java.util.Collections;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 /**
  * Tests the {@code DeletingVisitor} class.
  */
 public class DeletingVisitorTest {
-	/**
-	 * Modifies {@code DeletingVisitor} for testing: instead of actually deleting a
-	 * file, it adds the path to a list for later verification.
-	 */
-	static class DeletingVisitorHelper extends DeletingVisitor {
-		List<Path> deleted = new ArrayList<>();
-
-		public DeletingVisitorHelper(final Path basePath, final List<? extends PathCondition> pathFilters,
-				final boolean testMode) {
-			super(basePath, pathFilters, testMode);
-		}
-
-		@Override
-		protected void delete(final Path file) throws IOException {
-			deleted.add(file); // overrides and stores path instead of deleting
-		}
-	}
-
 	@Test
-	public void testAcceptedFilesAreDeleted() throws IOException {
+	public void testAcceptedFilesAreDeleted() throws IOException, Exception {
 		final Path base = Paths.get("/a/b/c");
 		final FixedCondition ACCEPT_ALL = new FixedCondition(true);
-		final DeletingVisitorHelper visitor = new DeletingVisitorHelper(base, Collections.singletonList(ACCEPT_ALL),
-				false);
+		final DeletingVisitor visitor = Mockito
+				.spy(new DeletingVisitor(base, Collections.singletonList(ACCEPT_ALL), false));
+		List<Path> visitorDeleted = new ArrayList<>();
+		Mockito.doAnswer((stubInvo) -> {
+			Path file = stubInvo.getArgument(0);
+			visitorDeleted.add(file);
+			return null;
+		}).when(visitor).delete(Mockito.any());
 
 		final Path any = Paths.get("/a/b/c/any");
 		visitor.visitFile(any, null);
-		assertTrue(visitor.deleted.contains(any));
+		assertTrue(visitorDeleted.contains(any));
 	}
 
 }
