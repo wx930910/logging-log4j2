@@ -17,6 +17,7 @@
 package org.apache.logging.log4j.message;
 
 import org.apache.logging.log4j.status.StatusLogger;
+import org.mockito.Mockito;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,43 +25,28 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 /**
  * Converts an Object to a JSON String.
  */
-public class JsonMessage implements Message {
+public class JsonMessage {
 
-    private static final long serialVersionUID = 1L;
-    private static final ObjectMapper mapper = new ObjectMapper();
-    private final Object object;
-
-    /**
-     * Constructs a JsonMessage.
-     *
-     * @param object the Object to serialize.
-     */
-    public JsonMessage(final Object object) {
-        this.object = object;
-    }
-
-    @Override
-    public String getFormattedMessage() {
-        try {
-            return mapper.writeValueAsString(object);
-        } catch (final JsonProcessingException e) {
-            StatusLogger.getLogger().catching(e);
-            return object.toString();
-        }
-    }
-
-    @Override
-    public String getFormat() {
-        return object.toString();
-    }
-
-    @Override
-    public Object[] getParameters() {
-        return new Object[] {object};
-    }
-
-    @Override
-    public Throwable getThrowable() {
-        return null;
-    }
+	public static Message mockMessage1(final Object object) throws Exception {
+		ObjectMapper mockFieldVariableMapper = new ObjectMapper();
+		long mockFieldVariableSerialVersionUID = 1L;
+		Object mockFieldVariableObject;
+		Message mockInstance = Mockito.mock(Message.class);
+		mockFieldVariableObject = object;
+		Mockito.when(mockInstance.getFormattedMessage()).thenAnswer((stubInvo) -> {
+			try {
+				return mockFieldVariableMapper.writeValueAsString(mockFieldVariableObject);
+			} catch (final JsonProcessingException e) {
+				StatusLogger.getLogger().catching(e);
+				return mockFieldVariableObject.toString();
+			}
+		});
+		Mockito.when(mockInstance.getParameters()).thenAnswer((stubInvo) -> {
+			return new Object[] { mockFieldVariableObject };
+		});
+		Mockito.when(mockInstance.getFormat()).thenAnswer((stubInvo) -> {
+			return mockFieldVariableObject.toString();
+		});
+		return mockInstance;
+	}
 }

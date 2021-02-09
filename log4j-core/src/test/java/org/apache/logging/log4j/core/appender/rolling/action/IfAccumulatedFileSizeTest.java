@@ -17,114 +17,141 @@
 
 package org.apache.logging.log4j.core.appender.rolling.action;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 /**
  * Tests the IfAccumulatedFileSize class.
  */
 public class IfAccumulatedFileSizeTest {
 
-    @Test
-    public void testGetThresholdBytes() {
-        assertEquals(2, create("2B").getThresholdBytes());
-        assertEquals(3, create("3 B").getThresholdBytes());
-        assertEquals(2 * 1024, create("2KB").getThresholdBytes());
-        assertEquals(3 * 1024, create("3 KB").getThresholdBytes());
-        assertEquals(2 * 1024 * 1024, create("2MB").getThresholdBytes());
-        assertEquals(3 * 1024 * 1024, create("3 MB").getThresholdBytes());
-        assertEquals(2L * 1024 * 1024 * 1024, create("2GB").getThresholdBytes());
-        assertEquals(3L * 1024 * 1024 * 1024, create("3 GB").getThresholdBytes());
-    }
+	@Test
+	public void testGetThresholdBytes() {
+		assertEquals(2, create("2B").getThresholdBytes());
+		assertEquals(3, create("3 B").getThresholdBytes());
+		assertEquals(2 * 1024, create("2KB").getThresholdBytes());
+		assertEquals(3 * 1024, create("3 KB").getThresholdBytes());
+		assertEquals(2 * 1024 * 1024, create("2MB").getThresholdBytes());
+		assertEquals(3 * 1024 * 1024, create("3 MB").getThresholdBytes());
+		assertEquals(2L * 1024 * 1024 * 1024, create("2GB").getThresholdBytes());
+		assertEquals(3L * 1024 * 1024 * 1024, create("3 GB").getThresholdBytes());
+	}
 
-    private static IfAccumulatedFileSize create(final String size) {
-        return IfAccumulatedFileSize.createFileSizeCondition(size);
-    }
+	private static IfAccumulatedFileSize create(final String size) {
+		return IfAccumulatedFileSize.createFileSizeCondition(size);
+	}
 
-    @Test
-    public void testNotAcceptOnExactMatch() {
-        final String[] sizes = {"2KB", "3MB", "4GB"};
-        for (final String size : sizes) {
-            final IfAccumulatedFileSize condition = IfAccumulatedFileSize.createFileSizeCondition(size);
-            final DummyFileAttributes attribs = new DummyFileAttributes();
-            attribs.size = condition.getThresholdBytes();
-            assertFalse(condition.accept(null, null, attribs));
-        }
-    }
+	@Test
+	public void testNotAcceptOnExactMatch() {
+		final String[] sizes = { "2KB", "3MB", "4GB" };
+		for (final String size : sizes) {
+			final IfAccumulatedFileSize condition = IfAccumulatedFileSize.createFileSizeCondition(size);
+			final DummyFileAttributes attribs = new DummyFileAttributes();
+			attribs.size = condition.getThresholdBytes();
+			assertFalse(condition.accept(null, null, attribs));
+		}
+	}
 
-    @Test
-    public void testAcceptIfExceedThreshold() {
-        final String[] sizes = {"2KB", "3MB", "4GB"};
-        for (final String size : sizes) {
-            final IfAccumulatedFileSize condition = IfAccumulatedFileSize.createFileSizeCondition(size);
-            final DummyFileAttributes attribs = new DummyFileAttributes();
-            attribs.size = condition.getThresholdBytes() + 1;
-            assertTrue(condition.accept(null, null, attribs));
-        }
-    }
+	@Test
+	public void testAcceptIfExceedThreshold() {
+		final String[] sizes = { "2KB", "3MB", "4GB" };
+		for (final String size : sizes) {
+			final IfAccumulatedFileSize condition = IfAccumulatedFileSize.createFileSizeCondition(size);
+			final DummyFileAttributes attribs = new DummyFileAttributes();
+			attribs.size = condition.getThresholdBytes() + 1;
+			assertTrue(condition.accept(null, null, attribs));
+		}
+	}
 
-    @Test
-    public void testNotAcceptIfBelowThreshold() {
-        final String[] sizes = {"2KB", "3MB", "4GB"};
-        for (final String size : sizes) {
-            final IfAccumulatedFileSize condition = IfAccumulatedFileSize.createFileSizeCondition(size);
-            final DummyFileAttributes attribs = new DummyFileAttributes();
-            attribs.size = condition.getThresholdBytes() - 1;
-            assertFalse(condition.accept(null, null, attribs));
-        }
-    }
+	@Test
+	public void testNotAcceptIfBelowThreshold() {
+		final String[] sizes = { "2KB", "3MB", "4GB" };
+		for (final String size : sizes) {
+			final IfAccumulatedFileSize condition = IfAccumulatedFileSize.createFileSizeCondition(size);
+			final DummyFileAttributes attribs = new DummyFileAttributes();
+			attribs.size = condition.getThresholdBytes() - 1;
+			assertFalse(condition.accept(null, null, attribs));
+		}
+	}
 
-    @Test
-    public void testAcceptOnceThresholdExceeded() {
-        final DummyFileAttributes attribs = new DummyFileAttributes();
-        final String[] sizes = {"2KB", "3MB", "4GB"};
-        for (final String size : sizes) {
-            final IfAccumulatedFileSize condition = IfAccumulatedFileSize.createFileSizeCondition(size);
-            final long quarter = condition.getThresholdBytes() / 4;
-            attribs.size = quarter;
-            assertFalse(condition.accept(null, null, attribs));
-            assertFalse(condition.accept(null, null, attribs));
-            assertFalse(condition.accept(null, null, attribs));
-            assertFalse(condition.accept(null, null, attribs));
-            assertTrue(condition.accept(null, null, attribs));
-        }
-    }
+	@Test
+	public void testAcceptOnceThresholdExceeded() {
+		final DummyFileAttributes attribs = new DummyFileAttributes();
+		final String[] sizes = { "2KB", "3MB", "4GB" };
+		for (final String size : sizes) {
+			final IfAccumulatedFileSize condition = IfAccumulatedFileSize.createFileSizeCondition(size);
+			final long quarter = condition.getThresholdBytes() / 4;
+			attribs.size = quarter;
+			assertFalse(condition.accept(null, null, attribs));
+			assertFalse(condition.accept(null, null, attribs));
+			assertFalse(condition.accept(null, null, attribs));
+			assertFalse(condition.accept(null, null, attribs));
+			assertTrue(condition.accept(null, null, attribs));
+		}
+	}
 
-    @Test
-    public void testAcceptCallsNestedConditionsOnlyIfPathAccepted() {
-        final CountingCondition counter = new CountingCondition(true);
-        final IfAccumulatedFileSize condition = IfAccumulatedFileSize.createFileSizeCondition("2KB", counter);
-        final DummyFileAttributes attribs = new DummyFileAttributes();
+	@Test
+	public void testAcceptCallsNestedConditionsOnlyIfPathAccepted() throws Exception {
+		final PathCondition counter = Mockito.mock(PathCondition.class);
+		boolean counterAccept;
+		int[] counterBeforeFileTreeWalkCount = new int[1];
+		int[] counterAcceptCount = new int[1];
+		counterAccept = true;
+		Mockito.doAnswer((stubInvo) -> {
+			counterBeforeFileTreeWalkCount[0]++;
+			return null;
+		}).when(counter).beforeFileTreeWalk();
+		Mockito.when(counter.accept(Mockito.any(), Mockito.any(), Mockito.any())).thenAnswer((stubInvo) -> {
+			counterAcceptCount[0]++;
+			return counterAccept;
+		});
+		final IfAccumulatedFileSize condition = IfAccumulatedFileSize.createFileSizeCondition("2KB", counter);
+		final DummyFileAttributes attribs = new DummyFileAttributes();
 
-        final long quarter = condition.getThresholdBytes() / 4;
-        attribs.size = quarter;
-        assertFalse(condition.accept(null, null, attribs));
-        assertEquals(0, counter.getAcceptCount());
+		final long quarter = condition.getThresholdBytes() / 4;
+		attribs.size = quarter;
+		assertFalse(condition.accept(null, null, attribs));
+		assertEquals(0, counterAcceptCount[0]);
 
-        assertFalse(condition.accept(null, null, attribs));
-        assertEquals(0, counter.getAcceptCount());
+		assertFalse(condition.accept(null, null, attribs));
+		assertEquals(0, counterAcceptCount[0]);
 
-        assertFalse(condition.accept(null, null, attribs));
-        assertEquals(0, counter.getAcceptCount());
+		assertFalse(condition.accept(null, null, attribs));
+		assertEquals(0, counterAcceptCount[0]);
 
-        assertFalse(condition.accept(null, null, attribs));
-        assertEquals(0, counter.getAcceptCount());
+		assertFalse(condition.accept(null, null, attribs));
+		assertEquals(0, counterAcceptCount[0]);
 
-        assertTrue(condition.accept(null, null, attribs));
-        assertEquals(1, counter.getAcceptCount());
+		assertTrue(condition.accept(null, null, attribs));
+		assertEquals(1, counterAcceptCount[0]);
 
-        assertTrue(condition.accept(null, null, attribs));
-        assertEquals(2, counter.getAcceptCount());
-    }
+		assertTrue(condition.accept(null, null, attribs));
+		assertEquals(2, counterAcceptCount[0]);
+	}
 
-    @Test
-    public void testBeforeTreeWalk() {
-        final CountingCondition counter = new CountingCondition(true);
-        final IfAccumulatedFileSize filter = IfAccumulatedFileSize.createFileSizeCondition("2GB", counter, counter,
-                counter);
-        filter.beforeFileTreeWalk();
-        assertEquals(3, counter.getBeforeFileTreeWalkCount());
-    }
+	@Test
+	public void testBeforeTreeWalk() throws Exception {
+		final PathCondition counter = Mockito.mock(PathCondition.class);
+		boolean counterAccept;
+		int[] counterBeforeFileTreeWalkCount = new int[1];
+		int[] counterAcceptCount = new int[1];
+		counterAccept = true;
+		Mockito.doAnswer((stubInvo) -> {
+			counterBeforeFileTreeWalkCount[0]++;
+			return null;
+		}).when(counter).beforeFileTreeWalk();
+		Mockito.when(counter.accept(Mockito.any(), Mockito.any(), Mockito.any())).thenAnswer((stubInvo) -> {
+			counterAcceptCount[0]++;
+			return counterAccept;
+		});
+		final IfAccumulatedFileSize filter = IfAccumulatedFileSize.createFileSizeCondition("2GB", counter, counter,
+				counter);
+		filter.beforeFileTreeWalk();
+		assertEquals(3, counterBeforeFileTreeWalkCount[0]);
+	}
 
 }

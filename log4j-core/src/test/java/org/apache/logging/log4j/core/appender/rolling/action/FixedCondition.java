@@ -17,28 +17,24 @@
 
 package org.apache.logging.log4j.core.appender.rolling.action;
 
-import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
-
-import org.apache.logging.log4j.core.appender.rolling.action.PathCondition;
+import org.mockito.Mockito;
 
 /**
  * Test helper class.
  */
-public class FixedCondition implements PathCondition {
+public class FixedCondition {
 
-    private final boolean accept;
-
-    public FixedCondition(final boolean accept) {
-        this.accept = accept;
-    }
-
-    @Override
-    public boolean accept(final Path baseDir, final Path path, final BasicFileAttributes attrs) {
-        return accept;
-    }
-
-    @Override
-    public void beforeFileTreeWalk() {
-    }
+	public static PathCondition mockPathCondition1(final boolean accept) {
+		boolean mockFieldVariableAccept;
+		PathCondition mockInstance = Mockito.mock(PathCondition.class);
+		mockFieldVariableAccept = accept;
+		try {
+			Mockito.when(mockInstance.accept(Mockito.any(), Mockito.any(), Mockito.any())).thenAnswer((stubInvo) -> {
+				return mockFieldVariableAccept;
+			});
+		} catch (Exception exception) {
+			exception.printStackTrace();
+		}
+		return mockInstance;
+	}
 }

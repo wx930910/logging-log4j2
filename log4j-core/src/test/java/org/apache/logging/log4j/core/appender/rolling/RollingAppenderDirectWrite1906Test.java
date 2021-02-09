@@ -16,10 +16,18 @@
  */
 package org.apache.logging.log4j.core.appender.rolling;
 
+import static org.apache.logging.log4j.hamcrest.Descriptors.that;
+import static org.apache.logging.log4j.hamcrest.FileMatchers.hasName;
+import static org.hamcrest.Matchers.endsWith;
+import static org.hamcrest.Matchers.hasItemInArray;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.io.IOException;
 import java.util.List;
 
 import org.apache.logging.log4j.Level;
@@ -33,100 +41,81 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.RuleChain;
-
-import static org.apache.logging.log4j.hamcrest.Descriptors.that;
-import static org.apache.logging.log4j.hamcrest.FileMatchers.hasName;
-import static org.hamcrest.Matchers.endsWith;
-import static org.hamcrest.Matchers.hasItemInArray;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertEquals;
+import org.mockito.Mockito;
 
 /**
  *
  */
 public class RollingAppenderDirectWrite1906Test {
 
-    private static final String CONFIG = "log4j-rolling-direct-1906.xml";
+	public static StatusListener mockStatusListener1() throws Exception {
+		StatusListener mockInstance = Mockito.mock(StatusListener.class);
+		Mockito.when(mockInstance.getStatusLevel()).thenReturn(Level.TRACE);
+		return mockInstance;
+	}
 
-    private static final String DIR = "target/rolling-direct-1906";
+	private static final String CONFIG = "log4j-rolling-direct-1906.xml";
 
-    public static LoggerContextRule loggerContextRule = LoggerContextRule.createShutdownTimeoutLoggerContextRule(CONFIG);
+	private static final String DIR = "target/rolling-direct-1906";
 
-    @Rule
-    public RuleChain chain = loggerContextRule.withCleanFoldersRule(DIR);
+	public static LoggerContextRule loggerContextRule = LoggerContextRule
+			.createShutdownTimeoutLoggerContextRule(CONFIG);
 
-    @BeforeClass
-    public static void setupClass() throws Exception {
-        StatusLogger.getLogger().registerListener(new NoopStatusListener());
-    }
+	@Rule
+	public RuleChain chain = loggerContextRule.withCleanFoldersRule(DIR);
 
-    private Logger logger;
+	@BeforeClass
+	public static void setupClass() throws Exception {
+		StatusLogger.getLogger().registerListener(RollingAppenderDirectWrite1906Test.mockStatusListener1());
+	}
 
-    @Before
-    public void setUp() throws Exception {
-        this.logger = loggerContextRule.getLogger(RollingAppenderDirectWrite1906Test.class.getName());
-    }
+	private Logger logger;
 
-    @Test
-    public void testAppender() throws Exception {
-        int count = 100;
-        for (int i=0; i < count; ++i) {
-            logger.debug("This is test message number " + i);
-            Thread.sleep(50);
-        }
-        Thread.sleep(50);
-        final File dir = new File(DIR);
-        assertTrue("Directory not created", dir.exists() && dir.listFiles().length > 0);
-        final File[] files = dir.listFiles();
-        assertNotNull(files);
-        assertThat(files, hasItemInArray(that(hasName(that(endsWith(".log"))))));
-        int found = 0;
-        for (File file: files) {
-            String actual = file.getName();
-            BufferedReader reader = new BufferedReader(new FileReader(file));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                assertNotNull("No log event in file " + actual, line);
-                String[] parts = line.split((" "));
-                String expected = "rollingfile." + parts[0] + ".log";
+	@Before
+	public void setUp() throws Exception {
+		this.logger = loggerContextRule.getLogger(RollingAppenderDirectWrite1906Test.class.getName());
+	}
 
-                assertEquals(logFileNameError(expected, actual), expected, actual);
-                ++found;
-            }
-            reader.close();
-        }
-        assertEquals("Incorrect number of events read. Expected " + count + ", Actual " + found, count, found);
+	@Test
+	public void testAppender() throws Exception {
+		int count = 100;
+		for (int i = 0; i < count; ++i) {
+			logger.debug("This is test message number " + i);
+			Thread.sleep(50);
+		}
+		Thread.sleep(50);
+		final File dir = new File(DIR);
+		assertTrue("Directory not created", dir.exists() && dir.listFiles().length > 0);
+		final File[] files = dir.listFiles();
+		assertNotNull(files);
+		assertThat(files, hasItemInArray(that(hasName(that(endsWith(".log"))))));
+		int found = 0;
+		for (File file : files) {
+			String actual = file.getName();
+			BufferedReader reader = new BufferedReader(new FileReader(file));
+			String line;
+			while ((line = reader.readLine()) != null) {
+				assertNotNull("No log event in file " + actual, line);
+				String[] parts = line.split((" "));
+				String expected = "rollingfile." + parts[0] + ".log";
 
-    }
+				assertEquals(logFileNameError(expected, actual), expected, actual);
+				++found;
+			}
+			reader.close();
+		}
+		assertEquals("Incorrect number of events read. Expected " + count + ", Actual " + found, count, found);
 
+	}
 
-    private String logFileNameError(String expected, String actual) {
-        final List<StatusData> statusData = StatusLogger.getLogger().getStatusData();
-        final StringBuilder sb = new StringBuilder();
-        for (StatusData statusItem : statusData) {
-            sb.append(statusItem.getFormattedStatus());
-            sb.append("\n");
-        }
-        sb.append("Incorrect file name. Expected: ").append(expected).append(" Actual: ").append(actual);
-        return sb.toString();
-    }
-
-    private static class NoopStatusListener implements StatusListener {
-        @Override
-        public void log(StatusData data) {
-
-        }
-
-        @Override
-        public Level getStatusLevel() {
-            return Level.TRACE;
-        }
-
-        @Override
-        public void close() throws IOException {
-
-        }
-    }
+	private String logFileNameError(String expected, String actual) {
+		final List<StatusData> statusData = StatusLogger.getLogger().getStatusData();
+		final StringBuilder sb = new StringBuilder();
+		for (StatusData statusItem : statusData) {
+			sb.append(statusItem.getFormattedStatus());
+			sb.append("\n");
+		}
+		sb.append("Incorrect file name. Expected: ").append(expected).append(" Actual: ").append(actual);
+		return sb.toString();
+	}
 }
