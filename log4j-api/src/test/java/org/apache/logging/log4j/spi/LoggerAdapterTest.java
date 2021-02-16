@@ -16,171 +16,147 @@
  */
 package org.apache.logging.log4j.spi;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.TestLogger;
 import org.apache.logging.log4j.TestLoggerContext;
 import org.apache.logging.log4j.TestLoggerContextFactory;
 import org.apache.logging.log4j.simple.SimpleLoggerContext;
 import org.junit.jupiter.api.Test;
-
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.mockito.Mockito;
 
 /**
  * Created by Pavel.Sivolobtchik@uxpsystems.com on 2016-10-19.
  */
 public class LoggerAdapterTest {
 
-    private static class RunnableThreadTest implements Runnable {
-        private final AbstractLoggerAdapter<Logger> adapter;
-        private final LoggerContext context;
-        private final CountDownLatch doneSignal;
-        private final int index;
-        private Map<String, Logger> resultMap;
+	public static AbstractLoggerAdapter<Logger> mockAbstractLoggerAdapter2() throws Exception {
+		AbstractLoggerAdapter<Logger> mockInstance = Mockito.spy(AbstractLoggerAdapter.class);
+		Mockito.doAnswer((stubInvo) -> {
+			String name = stubInvo.getArgument(0);
+			LoggerContext context = stubInvo.getArgument(1);
+			return context.getLogger(name);
+		}).when(mockInstance).newLogger(Mockito.any(), Mockito.any());
+		return mockInstance;
+	}
 
-        private final CountDownLatch startSignal;
+	public static AbstractLoggerAdapter<Logger> mockAbstractLoggerAdapter1() throws Exception {
+		AbstractLoggerAdapter<Logger> mockInstance = Mockito.spy(AbstractLoggerAdapter.class);
+		return mockInstance;
+	}
 
-        public RunnableThreadTest(final int index, final TestLoggerAdapter adapter, final LoggerContext context,
-                final CountDownLatch startSignal, final CountDownLatch doneSignal) {
-            this.adapter = adapter;
-            this.context = context;
-            this.startSignal = startSignal;
-            this.doneSignal = doneSignal;
-            this.index = index;
-        }
+	private static class RunnableThreadTest implements Runnable {
+		private final AbstractLoggerAdapter<Logger> adapter;
+		private final LoggerContext context;
+		private final CountDownLatch doneSignal;
+		private final int index;
+		private Map<String, Logger> resultMap;
 
-        public Map<String, Logger> getResultMap() {
-            return resultMap;
-        }
+		private final CountDownLatch startSignal;
 
-        @Override
-        public void run() {
-            try {
-                startSignal.await();
-                resultMap = adapter.getLoggersInContext(context);
-                resultMap.put(String.valueOf(index), new TestLogger());
-                doneSignal.countDown();
-            }
-            catch (final Exception e) {
-                e.printStackTrace();
-            }
-        }
+		public RunnableThreadTest(final int index, final AbstractLoggerAdapter adapter, final LoggerContext context,
+				final CountDownLatch startSignal, final CountDownLatch doneSignal) {
+			this.adapter = adapter;
+			this.context = context;
+			this.startSignal = startSignal;
+			this.doneSignal = doneSignal;
+			this.index = index;
+		}
 
-    }
+		public Map<String, Logger> getResultMap() {
+			return resultMap;
+		}
 
-    private static class TestLoggerAdapter extends AbstractLoggerAdapter<Logger> {
+		@Override
+		public void run() {
+			try {
+				startSignal.await();
+				resultMap = adapter.getLoggersInContext(context);
+				resultMap.put(String.valueOf(index), new TestLogger());
+				doneSignal.countDown();
+			} catch (final Exception e) {
+				e.printStackTrace();
+			}
+		}
 
-        @Override
-        protected LoggerContext getContext() {
-            return null;
-        }
+	}
 
-        @Override
-        protected Logger newLogger(final String name, final LoggerContext context) {
-            return null;
-        }
-    }
+	private static class TestLoggerContext2 extends TestLoggerContext {
+		private final String name;
+		private final LoggerContextShutdownAware listener;
 
-    private static class TestLoggerAdapter2 extends AbstractLoggerAdapter<Logger> {
+		public TestLoggerContext2(String name, LoggerContextShutdownAware listener) {
+			this.name = name;
+			this.listener = listener;
+		}
 
-        @Override
-        protected Logger newLogger(String name, LoggerContext context) {
-            return context.getLogger(name);
-        }
+		public String getName() {
+			return name;
+		}
 
-        @Override
-        protected LoggerContext getContext() {
-            return null;
-        }
+		public void shutdown() {
+			listener.contextShutdown(this);
+		}
+	}
 
-        public LoggerContext getContext(String fqcn) {
-            for (LoggerContext lc : registry.keySet()) {
-                TestLoggerContext2 context = (TestLoggerContext2) lc;
-                if (fqcn.equals(context.getName())) {
-                    return context;
-                }
-            }
-            LoggerContext lc = new TestLoggerContext2(fqcn, this);
-            registry.put(lc, new ConcurrentHashMap<>());
-            return lc;
-        }
-    }
+	@Test
+	public void testCleanup() throws Exception {
+		final LoggerContextFactory factory = TestLoggerContextFactory.mockLoggerContextFactory1();
+		final AbstractLoggerAdapter<Logger> adapter = LoggerAdapterTest.mockAbstractLoggerAdapter2();
+		for (int i = 0; i < 5; ++i) {
+			LoggerContext lc = adapter.getContext(Integer.toString(i));
+			lc.getLogger(Integer.toString(i));
+		}
+		assertEquals(5, adapter.registry.size(), "Expected 5 LoggerContexts");
+		Set<LoggerContext> contexts = new HashSet<>(adapter.registry.keySet());
+		for (LoggerContext context : contexts) {
+			((TestLoggerContext2) context).shutdown();
+		}
+		assertEquals(0, adapter.registry.size(), "Expected 0 LoggerContexts");
+	}
 
-    private static class TestLoggerContext2 extends TestLoggerContext {
-        private final String name;
-        private final LoggerContextShutdownAware listener;
+	/**
+	 * Testing synchronization in the getLoggersInContext() method
+	 */
+	@Test
+	public synchronized void testGetLoggersInContextSynch() throws Exception {
+		final AbstractLoggerAdapter<Logger> adapter = LoggerAdapterTest.mockAbstractLoggerAdapter1();
 
-        public TestLoggerContext2(String name, LoggerContextShutdownAware listener) {
-            this.name = name;
-            this.listener = listener;
-        }
+		final int num = 500;
 
-        public String getName() {
-            return name;
-        }
+		final CountDownLatch startSignal = new CountDownLatch(1);
+		final CountDownLatch doneSignal = new CountDownLatch(num);
 
-        public void shutdown() {
-            listener.contextShutdown(this);
-        }
-    }
+		final RunnableThreadTest[] instances = new RunnableThreadTest[num];
+		LoggerContext lastUsedContext = null;
+		for (int i = 0; i < num; i++) {
+			if (i % 2 == 0) {
+				// every other time create a new context
+				lastUsedContext = new SimpleLoggerContext();
+			}
+			final RunnableThreadTest runnable = new RunnableThreadTest(i, adapter, lastUsedContext, startSignal,
+					doneSignal);
+			final Thread thread = new Thread(runnable);
+			thread.start();
+			instances[i] = runnable;
+		}
 
-    @Test
-    public void testCleanup() throws Exception {
-        final LoggerContextFactory factory = new TestLoggerContextFactory();
-        final TestLoggerAdapter2 adapter = new TestLoggerAdapter2();
-        for (int i = 0; i < 5; ++i) {
-            LoggerContext lc = adapter.getContext(Integer.toString(i));
-            lc.getLogger(Integer.toString(i));
-        }
-        assertEquals(5, adapter.registry.size(), "Expected 5 LoggerContexts");
-        Set<LoggerContext> contexts = new HashSet<>(adapter.registry.keySet());
-        for (LoggerContext context : contexts) {
-            ((TestLoggerContext2) context).shutdown();
-        }
-        assertEquals(0, adapter.registry.size(), "Expected 0 LoggerContexts");
-    }
+		startSignal.countDown();
+		doneSignal.await();
 
-
-
-    /**
-     * Testing synchronization in the getLoggersInContext() method
-     */
-    @Test
-    public synchronized void testGetLoggersInContextSynch() throws Exception {
-        final TestLoggerAdapter adapter = new TestLoggerAdapter();
-
-        final int num = 500;
-
-        final CountDownLatch startSignal = new CountDownLatch(1);
-        final CountDownLatch doneSignal = new CountDownLatch(num);
-
-        final RunnableThreadTest[] instances = new RunnableThreadTest[num];
-        LoggerContext lastUsedContext = null;
-        for (int i = 0; i < num; i++) {
-            if (i % 2 == 0) {
-                //every other time create a new context
-                lastUsedContext = new SimpleLoggerContext();
-            }
-            final RunnableThreadTest runnable = new RunnableThreadTest(i, adapter, lastUsedContext, startSignal, doneSignal);
-            final Thread thread = new Thread(runnable);
-            thread.start();
-            instances[i] = runnable;
-        }
-
-        startSignal.countDown();
-        doneSignal.await();
-
-        for (int i = 0; i < num; i = i + 2) {
-            //maps for the same context should be the same instance
-            final Map<String, Logger> resultMap1 = instances[i].getResultMap();
-            final Map<String, Logger> resultMap2 = instances[i + 1].getResultMap();
-            assertSame(resultMap1, resultMap2, "not the same map for instances" + i + " and " + (i + 1) + ":");
-            assertEquals(2, resultMap1.size());
-        }
-    }
+		for (int i = 0; i < num; i = i + 2) {
+			// maps for the same context should be the same instance
+			final Map<String, Logger> resultMap1 = instances[i].getResultMap();
+			final Map<String, Logger> resultMap2 = instances[i + 1].getResultMap();
+			assertSame(resultMap1, resultMap2, "not the same map for instances" + i + " and " + (i + 1) + ":");
+			assertEquals(2, resultMap1.size());
+		}
+	}
 }

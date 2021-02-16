@@ -16,6 +16,14 @@
  */
 package org.apache.logging.log4j.core.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.ThreadContext;
@@ -26,46 +34,40 @@ import org.apache.logging.log4j.test.appender.ListAppender;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.mockito.Mockito;
 
 @Tag("functional")
 public class ContextDataProviderTest {
 
-    private static Logger logger;
-    private static ListAppender appender;
+	public static ContextDataProvider mockContextDataProvider1() {
+		ContextDataProvider mockInstance = Mockito.spy(ContextDataProvider.class);
+		Mockito.doAnswer((stubInvo) -> {
+			Map<String, String> contextData = new HashMap<>();
+			contextData.put("testKey", "testValue");
+			return contextData;
+		}).when(mockInstance).supplyContextData();
+		return mockInstance;
+	}
 
-    @BeforeAll
-    public static void beforeClass() {
-        ThreadContextDataInjector.contextDataProviders.add(new TestContextDataProvider());
-        System.setProperty(ConfigurationFactory.CONFIGURATION_FILE_PROPERTY, "log4j-contextData.xml");
-        LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
-        logger = loggerContext.getLogger(ContextDataProviderTest.class.getName());
-        appender = loggerContext.getConfiguration().getAppender("List");
-        assertNotNull(appender, "No List appender");
-    }
+	private static Logger logger;
+	private static ListAppender appender;
 
-    @Test
-    public void testContextProvider() {
-        ThreadContext.put("loginId", "jdoe");
-        logger.debug("This is a test");
-        List<String> messages = appender.getMessages();
-        assertEquals(1, messages.size(), "Incorrect number of messages");
-        assertTrue(messages.get(0).contains("testKey=testValue"), "Context data missing");
-    }
+	@BeforeAll
+	public static void beforeClass() throws Exception {
+		ThreadContextDataInjector.contextDataProviders.add(ContextDataProviderTest.mockContextDataProvider1());
+		System.setProperty(ConfigurationFactory.CONFIGURATION_FILE_PROPERTY, "log4j-contextData.xml");
+		LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
+		logger = loggerContext.getLogger(ContextDataProviderTest.class.getName());
+		appender = loggerContext.getConfiguration().getAppender("List");
+		assertNotNull(appender, "No List appender");
+	}
 
-    private static class TestContextDataProvider implements ContextDataProvider {
-
-        @Override
-        public Map<String, String> supplyContextData() {
-            Map<String, String> contextData = new HashMap<>();
-            contextData.put("testKey", "testValue");
-            return contextData;
-        }
-
-    }
+	@Test
+	public void testContextProvider() {
+		ThreadContext.put("loginId", "jdoe");
+		logger.debug("This is a test");
+		List<String> messages = appender.getMessages();
+		assertEquals(1, messages.size(), "Incorrect number of messages");
+		assertTrue(messages.get(0).contains("testKey=testValue"), "Context data missing");
+	}
 }
