@@ -131,6 +131,24 @@
           </execution>
         </executions>
       </plugin>
+<plugin>
+  <groupId>org.pitest</groupId>
+  <artifactId>pitest-maven</artifactId>
+  <version>1.6.2</version>
+  <!-- List all the packages of the project that contain classes you want
+       to be mutated.
+       All PIT's properties can be used.
+  -->
+  <configuration>
+    <targetTests>
+      <param>org.apache.logging.log4j.spi.LoggerAdapterTest</param>
+    </targetTests>
+    <targetClasses>
+        <param>org.apache.logging.log4j.spi.LoggerContextFactory</param>
+    </targetClasses>
+    <reportsDirectory>D:\projects\testing_auto_refactoring\Mutation</reportsDirectory>
+  </configuration>
+</plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
