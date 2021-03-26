@@ -16,6 +16,11 @@
  */
 package org.apache.logging.log4j;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
+
 import java.net.URI;
 
 import org.apache.logging.log4j.spi.LoggerContext;
@@ -24,23 +29,18 @@ import org.apache.logging.log4j.spi.LoggerContextFactory;
 /**
  *
  */
-public class TestLoggerContextFactory implements LoggerContextFactory {
+public class TestLoggerContextFactory {
 
-	private static LoggerContext context = new TestLoggerContext();
-
-	@Override
-	public LoggerContext getContext(final String fqcn, final ClassLoader loader, final Object externalContext,
-			final boolean currentContext) {
-		return context;
-	}
-
-	@Override
-	public LoggerContext getContext(final String fqcn, final ClassLoader loader, final Object externalContext,
-			final boolean currentContext, final URI configLocation, final String name) {
-		return context;
-	}
-
-	@Override
-	public void removeContext(final LoggerContext context) {
+	public static LoggerContextFactory mockLoggerContextFactory1() {
+		LoggerContext mockFieldVariableContext = new TestLoggerContext();
+		LoggerContextFactory mockInstance = spy(LoggerContextFactory.class);
+		doAnswer((stubInvo) -> {
+			return mockFieldVariableContext;
+		}).when(mockInstance).getContext(any(String.class), any(ClassLoader.class), any(Object.class), anyBoolean());
+		doAnswer((stubInvo) -> {
+			return mockFieldVariableContext;
+		}).when(mockInstance).getContext(any(String.class), any(ClassLoader.class), any(Object.class), anyBoolean(),
+				any(URI.class), any(String.class));
+		return mockInstance;
 	}
 }

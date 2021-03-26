@@ -17,7 +17,12 @@
  */
 package org.apache.logging.log4j.core.filter;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.spy;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.Filter;
@@ -26,262 +31,259 @@ import org.junit.Test;
 
 public class AbstractFilterableTest {
 
-    MockedAbstractFilterable filterable;
+	AbstractFilterable filterable;
 
-    @Before
-    public void setup() {
-        filterable = new MockedAbstractFilterable();
-    }
+	@Before
+	public void setup() {
+		filterable = spy(AbstractFilterable.class);
+	}
 
-    @Test
-    public void testAddSimpleFilter() throws Exception {
-        final Filter filter = ThresholdFilter.createFilter(Level.ERROR, null, null);
+	@Test
+	public void testAddSimpleFilter() throws Exception {
+		final Filter filter = ThresholdFilter.createFilter(Level.ERROR, null, null);
 
-        filterable.addFilter(filter);
-        assertSame(filter, filterable.getFilter());
-    }
+		filterable.addFilter(filter);
+		assertSame(filter, filterable.getFilter());
+	}
 
-    @Test
-    public void testAddMultipleSimpleFilters() throws Exception {
-        final Filter filter = ThresholdFilter.createFilter(Level.ERROR, null, null);
+	@Test
+	public void testAddMultipleSimpleFilters() throws Exception {
+		final Filter filter = ThresholdFilter.createFilter(Level.ERROR, null, null);
 
-        filterable.addFilter(filter);
-        assertSame(filter, filterable.getFilter());
-        // adding a second filter converts the filter
-        // into a CompositeFilter.class
-        filterable.addFilter(filter);
-        assertTrue(filterable.getFilter() instanceof CompositeFilter);
-        assertEquals(2, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
-    }
+		filterable.addFilter(filter);
+		assertSame(filter, filterable.getFilter());
+		// adding a second filter converts the filter
+		// into a CompositeFilter.class
+		filterable.addFilter(filter);
+		assertTrue(filterable.getFilter() instanceof CompositeFilter);
+		assertEquals(2, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
+	}
 
-    @Test
-    public void testAddMultipleEqualSimpleFilter() throws Exception {
-        final Filter filter = new EqualFilter("test");
+	@Test
+	public void testAddMultipleEqualSimpleFilter() throws Exception {
+		final Filter filter = new EqualFilter("test");
 
-        filterable.addFilter(filter);
-        assertSame(filter, filterable.getFilter());
-        // adding a second filter converts the filter
-        // into a CompositeFilter.class
-        filterable.addFilter(filter);
-        assertTrue(filterable.getFilter() instanceof CompositeFilter);
-        assertEquals(2, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
-    }
+		filterable.addFilter(filter);
+		assertSame(filter, filterable.getFilter());
+		// adding a second filter converts the filter
+		// into a CompositeFilter.class
+		filterable.addFilter(filter);
+		assertTrue(filterable.getFilter() instanceof CompositeFilter);
+		assertEquals(2, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
+	}
 
-    @Test
-    public void testAddCompositeFilter() throws Exception {
-        final Filter filter1 = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter filter2 = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter compositeFilter = CompositeFilter.createFilters(new Filter[] {filter1, filter2});
+	@Test
+	public void testAddCompositeFilter() throws Exception {
+		final Filter filter1 = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter filter2 = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter compositeFilter = CompositeFilter.createFilters(new Filter[] { filter1, filter2 });
 
-        filterable.addFilter(compositeFilter);
-        assertSame(compositeFilter, filterable.getFilter());
-    }
+		filterable.addFilter(compositeFilter);
+		assertSame(compositeFilter, filterable.getFilter());
+	}
 
-    @Test
-    public void testAddMultipleCompositeFilters() throws Exception {
-        final Filter filter1 = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter filter2 = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter filter3 = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter compositeFilter = CompositeFilter.createFilters(new Filter[]{filter1, filter2, filter3});
+	@Test
+	public void testAddMultipleCompositeFilters() throws Exception {
+		final Filter filter1 = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter filter2 = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter filter3 = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter compositeFilter = CompositeFilter.createFilters(new Filter[] { filter1, filter2, filter3 });
 
-        filterable.addFilter(compositeFilter);
-        assertSame(compositeFilter, filterable.getFilter());
-        // adding a second filter converts the filter
-        // into a CompositeFilter.class
-        filterable.addFilter(compositeFilter);
-        assertTrue(filterable.getFilter() instanceof CompositeFilter);
-        assertEquals(6, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
-    }
+		filterable.addFilter(compositeFilter);
+		assertSame(compositeFilter, filterable.getFilter());
+		// adding a second filter converts the filter
+		// into a CompositeFilter.class
+		filterable.addFilter(compositeFilter);
+		assertTrue(filterable.getFilter() instanceof CompositeFilter);
+		assertEquals(6, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
+	}
 
-    @Test
-    public void testAddSimpleFilterAndCompositeFilter() throws Exception {
-        final Filter filter1 = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter filter2 = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter notInCompositeFilterFilter = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter compositeFilter = CompositeFilter.createFilters(new Filter[]{filter1, filter2});
+	@Test
+	public void testAddSimpleFilterAndCompositeFilter() throws Exception {
+		final Filter filter1 = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter filter2 = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter notInCompositeFilterFilter = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter compositeFilter = CompositeFilter.createFilters(new Filter[] { filter1, filter2 });
 
-        filterable.addFilter(notInCompositeFilterFilter);
-        assertSame(notInCompositeFilterFilter, filterable.getFilter());
-        // adding a second filter converts the filter
-        // into a CompositeFilter.class
-        filterable.addFilter(compositeFilter);
-        assertTrue(filterable.getFilter() instanceof CompositeFilter);
-        assertEquals(2, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
-    }
+		filterable.addFilter(notInCompositeFilterFilter);
+		assertSame(notInCompositeFilterFilter, filterable.getFilter());
+		// adding a second filter converts the filter
+		// into a CompositeFilter.class
+		filterable.addFilter(compositeFilter);
+		assertTrue(filterable.getFilter() instanceof CompositeFilter);
+		assertEquals(2, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
+	}
 
-    @Test
-    public void testAddCompositeFilterAndSimpleFilter() throws Exception {
-        final Filter filter1 = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter filter2 = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter notInCompositeFilterFilter = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter compositeFilter = CompositeFilter.createFilters(new Filter[]{filter1, filter2});
+	@Test
+	public void testAddCompositeFilterAndSimpleFilter() throws Exception {
+		final Filter filter1 = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter filter2 = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter notInCompositeFilterFilter = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter compositeFilter = CompositeFilter.createFilters(new Filter[] { filter1, filter2 });
 
-        filterable.addFilter(compositeFilter);
-        assertSame(compositeFilter, filterable.getFilter());
-        // adding a second filter converts the filter
-        // into a CompositeFilter.class
-        filterable.addFilter(notInCompositeFilterFilter);
-        assertTrue(filterable.getFilter() instanceof CompositeFilter);
-        assertEquals(3, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
-    }
+		filterable.addFilter(compositeFilter);
+		assertSame(compositeFilter, filterable.getFilter());
+		// adding a second filter converts the filter
+		// into a CompositeFilter.class
+		filterable.addFilter(notInCompositeFilterFilter);
+		assertTrue(filterable.getFilter() instanceof CompositeFilter);
+		assertEquals(3, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
+	}
 
-    @Test
-    public void testRemoveSimpleFilterFromSimpleFilter() throws Exception {
-        final Filter filter = ThresholdFilter.createFilter(Level.ERROR, null, null);
+	@Test
+	public void testRemoveSimpleFilterFromSimpleFilter() throws Exception {
+		final Filter filter = ThresholdFilter.createFilter(Level.ERROR, null, null);
 
-        filterable.addFilter(filter);
-        filterable.removeFilter(filter);
-        assertNull(filterable.getFilter());
-    }
+		filterable.addFilter(filter);
+		filterable.removeFilter(filter);
+		assertNull(filterable.getFilter());
+	}
 
-    @Test
-    public void testRemoveSimpleEqualFilterFromSimpleFilter() throws Exception {
-        final Filter filterOriginal = new EqualFilter("test");
-        final Filter filterCopy = new EqualFilter("test");
+	@Test
+	public void testRemoveSimpleEqualFilterFromSimpleFilter() throws Exception {
+		final Filter filterOriginal = new EqualFilter("test");
+		final Filter filterCopy = new EqualFilter("test");
 
-        filterable.addFilter(filterOriginal);
-        filterable.removeFilter(filterCopy);
-        assertNull(filterable.getFilter());
-    }
+		filterable.addFilter(filterOriginal);
+		filterable.removeFilter(filterCopy);
+		assertNull(filterable.getFilter());
+	}
 
-    @Test
-    public void testRemoveSimpleEqualFilterFromTwoSimpleFilters() throws Exception {
-        final Filter filterOriginal = new EqualFilter("test");
-        final Filter filterCopy = new EqualFilter("test");
+	@Test
+	public void testRemoveSimpleEqualFilterFromTwoSimpleFilters() throws Exception {
+		final Filter filterOriginal = new EqualFilter("test");
+		final Filter filterCopy = new EqualFilter("test");
 
-        filterable.addFilter(filterOriginal);
-        filterable.addFilter(filterOriginal);
-        filterable.removeFilter(filterCopy);
-        assertSame(filterOriginal, filterable.getFilter());
-        filterable.removeFilter(filterCopy);
-        assertNull(filterable.getFilter());
-    }
+		filterable.addFilter(filterOriginal);
+		filterable.addFilter(filterOriginal);
+		filterable.removeFilter(filterCopy);
+		assertSame(filterOriginal, filterable.getFilter());
+		filterable.removeFilter(filterCopy);
+		assertNull(filterable.getFilter());
+	}
 
-    @Test
-    public void testRemoveSimpleEqualFilterFromMultipleSimpleFilters() throws Exception {
-        final Filter filterOriginal = new EqualFilter("test");
-        final Filter filterCopy = new EqualFilter("test");
+	@Test
+	public void testRemoveSimpleEqualFilterFromMultipleSimpleFilters() throws Exception {
+		final Filter filterOriginal = new EqualFilter("test");
+		final Filter filterCopy = new EqualFilter("test");
 
-        filterable.addFilter(filterOriginal);
-        filterable.addFilter(filterOriginal);
-        filterable.addFilter(filterCopy);
-        filterable.removeFilter(filterCopy);
-        assertTrue(filterable.getFilter() instanceof CompositeFilter);
-        assertEquals(2, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
-        filterable.removeFilter(filterCopy);
-        assertEquals(filterOriginal, filterable.getFilter());
-        filterable.removeFilter(filterOriginal);
-        assertNull(filterable.getFilter());
-    }
+		filterable.addFilter(filterOriginal);
+		filterable.addFilter(filterOriginal);
+		filterable.addFilter(filterCopy);
+		filterable.removeFilter(filterCopy);
+		assertTrue(filterable.getFilter() instanceof CompositeFilter);
+		assertEquals(2, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
+		filterable.removeFilter(filterCopy);
+		assertEquals(filterOriginal, filterable.getFilter());
+		filterable.removeFilter(filterOriginal);
+		assertNull(filterable.getFilter());
+	}
 
-    @Test
-    public void testRemoveNullFromSingleSimpleFilter() throws Exception {
-        final Filter filter = ThresholdFilter.createFilter(Level.ERROR, null, null);
+	@Test
+	public void testRemoveNullFromSingleSimpleFilter() throws Exception {
+		final Filter filter = ThresholdFilter.createFilter(Level.ERROR, null, null);
 
-        filterable.addFilter(filter);
-        filterable.removeFilter(null);
-        assertSame(filter, filterable.getFilter());
-    }
+		filterable.addFilter(filter);
+		filterable.removeFilter(null);
+		assertSame(filter, filterable.getFilter());
+	}
 
+	@Test
+	public void testRemoveNonExistingFilterFromSingleSimpleFilter() throws Exception {
+		final Filter filter = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter newFilter = ThresholdFilter.createFilter(Level.WARN, null, null);
 
-    @Test
-    public void testRemoveNonExistingFilterFromSingleSimpleFilter() throws Exception {
-        final Filter filter = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter newFilter = ThresholdFilter.createFilter(Level.WARN, null, null);
+		filterable.addFilter(filter);
+		filterable.removeFilter(newFilter);
+		assertSame(filter, filterable.getFilter());
+	}
 
-        filterable.addFilter(filter);
-        filterable.removeFilter(newFilter);
-        assertSame(filter, filterable.getFilter());
-    }
+	@Test
+	public void testRemoveSimpleFilterFromCompositeFilter() {
+		final Filter filter1 = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter filter2 = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter compositeFilter = CompositeFilter.createFilters(new Filter[] { filter1, filter2 });
 
-    @Test
-    public void testRemoveSimpleFilterFromCompositeFilter() {
-        final Filter filter1 = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter filter2 = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter compositeFilter = CompositeFilter.createFilters(new Filter[]{filter1, filter2});
+		filterable.addFilter(compositeFilter);
 
-        filterable.addFilter(compositeFilter);
+		// should remove internal filter of compositeFilter
+		filterable.removeFilter(filter1);
+		assertFalse(filterable.getFilter() instanceof CompositeFilter);
 
-        // should remove internal filter of compositeFilter
-        filterable.removeFilter(filter1);
-        assertFalse(filterable.getFilter() instanceof CompositeFilter);
+		assertEquals(filter2, filterable.getFilter());
+	}
 
-        assertEquals(filter2, filterable.getFilter());
-    }
+	@Test
+	public void testRemoveSimpleFilterFromCompositeAndSimpleFilter() {
+		final Filter filter1 = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter filter2 = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter compositeFilter = CompositeFilter.createFilters(new Filter[] { filter1, filter2 });
+		final Filter anotherFilter = ThresholdFilter.createFilter(Level.WARN, null, null);
 
-    @Test
-    public void testRemoveSimpleFilterFromCompositeAndSimpleFilter() {
-        final Filter filter1 = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter filter2 = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter compositeFilter = CompositeFilter.createFilters(new Filter[]{filter1, filter2});
-        final Filter anotherFilter = ThresholdFilter.createFilter(Level.WARN, null, null);
+		filterable.addFilter(compositeFilter);
+		filterable.addFilter(anotherFilter);
 
+		// should not remove internal filter of compositeFilter
+		filterable.removeFilter(anotherFilter);
+		assertTrue(filterable.getFilter() instanceof CompositeFilter);
+		assertEquals(2, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
+	}
 
-        filterable.addFilter(compositeFilter);
-        filterable.addFilter(anotherFilter);
+	@Test
+	public void testRemoveCompositeFilterFromCompositeFilter() {
+		final Filter filter1 = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter filter2 = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter compositeFilter = CompositeFilter.createFilters(new Filter[] { filter1, filter2 });
 
-        // should not remove internal filter of compositeFilter
-        filterable.removeFilter(anotherFilter);
-        assertTrue(filterable.getFilter() instanceof CompositeFilter);
-        assertEquals(2, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
-    }
+		filterable.addFilter(compositeFilter);
+		filterable.removeFilter(compositeFilter);
+		assertNull(filterable.getFilter());
+	}
 
-    @Test
-    public void testRemoveCompositeFilterFromCompositeFilter() {
-        final Filter filter1 = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter filter2 = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter compositeFilter = CompositeFilter.createFilters(new Filter[]{filter1, filter2});
+	@Test
+	public void testRemoveFiltersFromComposite() {
+		final Filter filter1 = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter filter2 = ThresholdFilter.createFilter(Level.ERROR, null, null);
+		final Filter compositeFilter = CompositeFilter.createFilters(new Filter[] { filter1, filter2 });
+		final Filter anotherFilter = ThresholdFilter.createFilter(Level.WARN, null, null);
 
-        filterable.addFilter(compositeFilter);
-        filterable.removeFilter(compositeFilter);
-        assertNull(filterable.getFilter());
-    }
+		filterable.addFilter(compositeFilter);
+		filterable.addFilter(anotherFilter);
+		assertEquals(3, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
+		filterable.removeFilter(filter1);
+		assertEquals(2, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
+		filterable.removeFilter(filter2);
+		assertSame(anotherFilter, filterable.getFilter());
+	}
 
-    @Test
-    public void testRemoveFiltersFromComposite() {
-        final Filter filter1 = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter filter2 = ThresholdFilter.createFilter(Level.ERROR, null, null);
-        final Filter compositeFilter = CompositeFilter.createFilters(new Filter[]{filter1, filter2});
-        final Filter anotherFilter = ThresholdFilter.createFilter(Level.WARN, null, null);
+	private class EqualFilter extends AbstractFilter {
+		private final String key;
 
-        filterable.addFilter(compositeFilter);
-        filterable.addFilter(anotherFilter);
-        assertEquals(3, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
-        filterable.removeFilter(filter1);
-        assertEquals(2, ((CompositeFilter) filterable.getFilter()).getFiltersArray().length);
-        filterable.removeFilter(filter2);
-        assertSame(anotherFilter, filterable.getFilter());
-    }
+		public EqualFilter(final String key) {
+			this.key = key;
+		}
 
-    private class MockedAbstractFilterable extends AbstractFilterable {}
+		@Override
+		public boolean equals(final Object o) {
+			if (this == o) {
+				return true;
+			}
+			if (!(o instanceof EqualFilter)) {
+				return false;
+			}
 
-    private class EqualFilter extends AbstractFilter {
-        private final String key;
-        public EqualFilter(final String key) {
-            this.key = key;
-        }
+			final EqualFilter that = (EqualFilter) o;
 
-        @Override
-        public boolean equals(final Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (!(o instanceof EqualFilter)) {
-                return false;
-            }
+			if (key != null ? !key.equals(that.key) : that.key != null) {
+				return false;
+			}
 
-            final EqualFilter that = (EqualFilter) o;
+			return true;
+		}
 
-            if (key != null ? !key.equals(that.key) : that.key != null) {
-                return false;
-            }
-
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            return key != null ? key.hashCode() : 0;
-        }
-    }
+		@Override
+		public int hashCode() {
+			return key != null ? key.hashCode() : 0;
+		}
+	}
 }

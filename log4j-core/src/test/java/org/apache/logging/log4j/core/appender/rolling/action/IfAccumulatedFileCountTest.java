@@ -17,59 +17,94 @@
 
 package org.apache.logging.log4j.core.appender.rolling.action;
 
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-import static org.junit.Assert.*;
+import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
+
+import org.junit.Test;
 
 /**
  * Tests the IfAccumulatedFileCount class.
  */
 public class IfAccumulatedFileCountTest {
 
-    @Test
-    public void testGetThresholdCount() {
-        assertEquals(123, IfAccumulatedFileCount.createFileCountCondition(123).getThresholdCount());
-        assertEquals(456, IfAccumulatedFileCount.createFileCountCondition(456).getThresholdCount());
-    }
+	@Test
+	public void testGetThresholdCount() {
+		assertEquals(123, IfAccumulatedFileCount.createFileCountCondition(123).getThresholdCount());
+		assertEquals(456, IfAccumulatedFileCount.createFileCountCondition(456).getThresholdCount());
+	}
 
-    @Test
-    public void testAccept() {
-        final int[] counts = {3, 5, 9};
-        for (final int count : counts) {
-            final IfAccumulatedFileCount condition = IfAccumulatedFileCount.createFileCountCondition(count);
-            for (int i = 0; i < count; i++) {
-                assertFalse(condition.accept(null, null, null));
-                // exact match: does not accept
-            }
-            // accept when threshold is exceeded
-            assertTrue(condition.accept(null, null, null));
-            assertTrue(condition.accept(null, null, null));
-        }
-    }
+	@Test
+	public void testAccept() {
+		final int[] counts = { 3, 5, 9 };
+		for (final int count : counts) {
+			final IfAccumulatedFileCount condition = IfAccumulatedFileCount.createFileCountCondition(count);
+			for (int i = 0; i < count; i++) {
+				assertFalse(condition.accept(null, null, null));
+				// exact match: does not accept
+			}
+			// accept when threshold is exceeded
+			assertTrue(condition.accept(null, null, null));
+			assertTrue(condition.accept(null, null, null));
+		}
+	}
 
-    @Test
-    public void testAcceptCallsNestedConditionsOnlyIfPathAccepted() {
-        final CountingCondition counter = new CountingCondition(true);
-        final IfAccumulatedFileCount condition = IfAccumulatedFileCount.createFileCountCondition(3, counter);
+	@Test
+	public void testAcceptCallsNestedConditionsOnlyIfPathAccepted() {
+		final PathCondition counter = mock(PathCondition.class);
+		boolean counterAccept;
+		int[] counterBeforeFileTreeWalkCount = new int[1];
+		int[] counterAcceptCount = new int[1];
+		counterAccept = true;
+		when(counter.accept(any(Path.class), any(Path.class), any(BasicFileAttributes.class)))
+				.thenAnswer((stubInvo) -> {
+					counterAcceptCount[0]++;
+					return counterAccept;
+				});
+		doAnswer((stubInvo) -> {
+			counterBeforeFileTreeWalkCount[0]++;
+			return null;
+		}).when(counter).beforeFileTreeWalk();
+		final IfAccumulatedFileCount condition = IfAccumulatedFileCount.createFileCountCondition(3, counter);
 
-        for (int i = 1; i < 10; i++) {
-            if (i <= 3) {
-                assertFalse("i=" + i, condition.accept(null, null, null));
-                assertEquals(0, counter.getAcceptCount());
-            } else {
-                assertTrue(condition.accept(null, null, null));
-                assertEquals(i - 3, counter.getAcceptCount());
-            }
-        }
-    }
+		for (int i = 1; i < 10; i++) {
+			if (i <= 3) {
+				assertFalse("i=" + i, condition.accept(null, null, null));
+				assertEquals(0, counterAcceptCount[0]);
+			} else {
+				assertTrue(condition.accept(null, null, null));
+				assertEquals(i - 3, counterAcceptCount[0]);
+			}
+		}
+	}
 
-    @Test
-    public void testBeforeTreeWalk() {
-        final CountingCondition counter = new CountingCondition(true);
-        final IfAccumulatedFileCount filter = IfAccumulatedFileCount.createFileCountCondition(30, counter, counter,
-                counter);
-        filter.beforeFileTreeWalk();
-        assertEquals(3, counter.getBeforeFileTreeWalkCount());
-    }
+	@Test
+	public void testBeforeTreeWalk() {
+		final PathCondition counter = mock(PathCondition.class);
+		boolean counterAccept;
+		int[] counterBeforeFileTreeWalkCount = new int[1];
+		int[] counterAcceptCount = new int[1];
+		counterAccept = true;
+		when(counter.accept(any(Path.class), any(Path.class), any(BasicFileAttributes.class)))
+				.thenAnswer((stubInvo) -> {
+					counterAcceptCount[0]++;
+					return counterAccept;
+				});
+		doAnswer((stubInvo) -> {
+			counterBeforeFileTreeWalkCount[0]++;
+			return null;
+		}).when(counter).beforeFileTreeWalk();
+		final IfAccumulatedFileCount filter = IfAccumulatedFileCount.createFileCountCondition(30, counter, counter,
+				counter);
+		filter.beforeFileTreeWalk();
+		assertEquals(3, counterBeforeFileTreeWalkCount[0]);
+	}
 
 }

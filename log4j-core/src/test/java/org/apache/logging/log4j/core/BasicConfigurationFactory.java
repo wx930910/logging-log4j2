@@ -16,6 +16,9 @@
  */
 package org.apache.logging.log4j.core;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.withSettings;
+
 import java.net.URI;
 
 import org.apache.logging.log4j.Level;
@@ -24,38 +27,37 @@ import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.ConfigurationFactory;
 import org.apache.logging.log4j.core.config.ConfigurationSource;
 import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.mockito.Mockito;
 
 /**
  *
  */
 public class BasicConfigurationFactory extends ConfigurationFactory {
 
-    @Override
-    public Configuration getConfiguration(final LoggerContext loggerContext, final String name, final URI configLocation) {
-        return new BasicConfiguration();
-    }
+	public AbstractConfiguration mockAbstractConfiguration1() {
+		String mockFieldVariableDEFAULT_LEVEL = "org.apache.logging.log4j.level";
+		AbstractConfiguration mockInstance = mock(AbstractConfiguration.class, withSettings()
+				.useConstructor(null, ConfigurationSource.NULL_SOURCE).defaultAnswer(Mockito.CALLS_REAL_METHODS));
+		final LoggerConfig root = mockInstance.getRootLogger();
+		final String name = System.getProperty(mockFieldVariableDEFAULT_LEVEL);
+		final Level level = (name != null && Level.getLevel(name) != null) ? Level.getLevel(name) : Level.ERROR;
+		root.setLevel(level);
+		return mockInstance;
+	}
 
-    @Override
-    public String[] getSupportedTypes() {
-        return null;
-    }
+	@Override
+	public Configuration getConfiguration(final LoggerContext loggerContext, final String name,
+			final URI configLocation) {
+		return mockAbstractConfiguration1();
+	}
 
-    @Override
-    public Configuration getConfiguration(final LoggerContext loggerContext, final ConfigurationSource source) {
-        return null;
-    }
+	@Override
+	public String[] getSupportedTypes() {
+		return null;
+	}
 
-    public class BasicConfiguration extends AbstractConfiguration {
-
-        private static final String DEFAULT_LEVEL = "org.apache.logging.log4j.level";
-
-        public BasicConfiguration() {
-            super(null, ConfigurationSource.NULL_SOURCE);
-
-            final LoggerConfig root = getRootLogger();
-            final String name = System.getProperty(DEFAULT_LEVEL);
-            final Level level = (name != null && Level.getLevel(name) != null) ? Level.getLevel(name) : Level.ERROR;
-            root.setLevel(level);
-        }
-    }
+	@Override
+	public Configuration getConfiguration(final LoggerContext loggerContext, final ConfigurationSource source) {
+		return null;
+	}
 }

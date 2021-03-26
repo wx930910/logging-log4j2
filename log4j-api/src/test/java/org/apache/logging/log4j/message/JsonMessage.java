@@ -16,6 +16,9 @@
  */
 package org.apache.logging.log4j.message;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import org.apache.logging.log4j.status.StatusLogger;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -24,43 +27,28 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 /**
  * Converts an Object to a JSON String.
  */
-public class JsonMessage implements Message {
+public class JsonMessage {
 
-    private static final long serialVersionUID = 1L;
-    private static final ObjectMapper mapper = new ObjectMapper();
-    private final Object object;
-
-    /**
-     * Constructs a JsonMessage.
-     *
-     * @param object the Object to serialize.
-     */
-    public JsonMessage(final Object object) {
-        this.object = object;
-    }
-
-    @Override
-    public String getFormattedMessage() {
-        try {
-            return mapper.writeValueAsString(object);
-        } catch (final JsonProcessingException e) {
-            StatusLogger.getLogger().catching(e);
-            return object.toString();
-        }
-    }
-
-    @Override
-    public String getFormat() {
-        return object.toString();
-    }
-
-    @Override
-    public Object[] getParameters() {
-        return new Object[] {object};
-    }
-
-    @Override
-    public Throwable getThrowable() {
-        return null;
-    }
+	public static Message mockMessage1(final Object object) {
+		long mockFieldVariableSerialVersionUID = 1L;
+		Object mockFieldVariableObject;
+		ObjectMapper mockFieldVariableMapper = new ObjectMapper();
+		Message mockInstance = mock(Message.class);
+		mockFieldVariableObject = object;
+		when(mockInstance.getParameters()).thenAnswer((stubInvo) -> {
+			return new Object[] { mockFieldVariableObject };
+		});
+		when(mockInstance.getFormat()).thenAnswer((stubInvo) -> {
+			return mockFieldVariableObject.toString();
+		});
+		when(mockInstance.getFormattedMessage()).thenAnswer((stubInvo) -> {
+			try {
+				return mockFieldVariableMapper.writeValueAsString(mockFieldVariableObject);
+			} catch (final JsonProcessingException e) {
+				StatusLogger.getLogger().catching(e);
+				return mockFieldVariableObject.toString();
+			}
+		});
+		return mockInstance;
+	}
 }

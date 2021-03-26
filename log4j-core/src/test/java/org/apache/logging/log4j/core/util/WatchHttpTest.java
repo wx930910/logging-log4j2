@@ -16,6 +16,18 @@
  */
 package org.apache.logging.log4j.core.util;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.removeStub;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -31,13 +43,10 @@ import org.apache.logging.log4j.core.config.ConfigurationListener;
 import org.apache.logging.log4j.core.config.ConfigurationScheduler;
 import org.apache.logging.log4j.core.config.DefaultConfiguration;
 import org.apache.logging.log4j.core.config.HttpWatcher;
-import org.apache.logging.log4j.core.config.Reconfigurable;
 import org.apache.logging.log4j.core.net.ssl.TestConstants;
 import org.apache.logging.log4j.core.time.internal.format.FastDateFormat;
 import org.apache.logging.log4j.util.PropertiesUtil;
-import org.junit.After;
 import org.junit.Assume;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
@@ -45,129 +54,110 @@ import org.junit.Test;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static com.github.tomakehurst.wiremock.client.WireMock.removeStub;
-import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
-import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-
 /**
  * Test the WatchManager
  */
 public class WatchHttpTest {
 
-    private static final String FORCE_RUN_KEY = WatchHttpTest.class.getSimpleName() + ".forceRun";
-    private final String file = "log4j-test1.xml";
-    private static FastDateFormat formatter;
-    private static final String XML = "application/xml";
+	public ConfigurationListener mockConfigurationListener1(final Queue<String> queue, String name) {
+		Queue<String> mockFieldVariableQueue;
+		String mockFieldVariableName;
+		ConfigurationListener mockInstance = mock(ConfigurationListener.class);
+		mockFieldVariableQueue = queue;
+		mockFieldVariableName = name;
+		doAnswer((stubInvo) -> {
+			mockFieldVariableQueue.add(mockFieldVariableName);
+			return null;
+		}).when(mockInstance).onChange(any());
+		return mockInstance;
+	}
 
-    private static final boolean IS_WINDOWS = PropertiesUtil.getProperties().isOsWindows();
+	private static final String FORCE_RUN_KEY = WatchHttpTest.class.getSimpleName() + ".forceRun";
+	private final String file = "log4j-test1.xml";
+	private static FastDateFormat formatter;
+	private static final String XML = "application/xml";
 
-    @BeforeClass
-    public static void beforeClass() {
-        try {
-            formatter = FastDateFormat.getInstance("EEE, dd MMM yyyy HH:mm:ss", TimeZone.getTimeZone("UTC"));
-        } catch (Exception ex) {
-            System.err.println("Unable to create date format.");
-            ex.printStackTrace();
-            throw ex;
-        }
-    }
+	private static final boolean IS_WINDOWS = PropertiesUtil.getProperties().isOsWindows();
 
-    @Rule
-    public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort().dynamicHttpsPort()
-        .keystorePath(TestConstants.KEYSTORE_FILE)
-        .keystorePassword(String.valueOf(TestConstants.KEYSTORE_PWD()))
-        .keystoreType(TestConstants.KEYSTORE_TYPE));
+	@BeforeClass
+	public static void beforeClass() {
+		try {
+			formatter = FastDateFormat.getInstance("EEE, dd MMM yyyy HH:mm:ss", TimeZone.getTimeZone("UTC"));
+		} catch (Exception ex) {
+			System.err.println("Unable to create date format.");
+			ex.printStackTrace();
+			throw ex;
+		}
+	}
 
-    @Test
-    public void testWatchManager() throws Exception {
-        BlockingQueue<String> queue = new LinkedBlockingQueue<>();
-        List<ConfigurationListener> listeners = new ArrayList<>();
-        listeners.add(new TestConfigurationListener(queue, "log4j-test1.xml"));
-        TimeZone timeZone = TimeZone.getTimeZone("UTC");
-        Calendar now = Calendar.getInstance(timeZone);
-        Calendar previous = now;
-        previous.add(Calendar.MINUTE, -5);
-        Configuration configuration = new DefaultConfiguration();
-        Assume.assumeTrue(!IS_WINDOWS || Boolean.getBoolean(FORCE_RUN_KEY));
-        URL url = new URL("http://localhost:" + wireMockRule.port() + "/log4j-test1.xml");
-        StubMapping stubMapping = stubFor(get(urlPathEqualTo("/log4j-test1.xml"))
-            .willReturn(aResponse()
-            .withBodyFile(file)
-            .withStatus(200)
-            .withHeader("Last-Modified", formatter.format(previous) + " GMT")
-            .withHeader("Content-Type", XML)));
-        final ConfigurationScheduler scheduler = new ConfigurationScheduler();
-        scheduler.incrementScheduledItems();
-        final WatchManager watchManager = new WatchManager(scheduler);
-        watchManager.setIntervalSeconds(1);
-        scheduler.start();
-        watchManager.start();
-        try {
-            watchManager.watch(new Source(url.toURI(), previous.getTimeInMillis()), new HttpWatcher(configuration, null,
-                listeners, previous.getTimeInMillis()));
-            final String str = queue.poll(2, TimeUnit.SECONDS);
-            assertNotNull("File change not detected", str);
-        } finally {
-            removeStub(stubMapping);
-            watchManager.stop();
-            scheduler.stop();
-        }
-    }
+	@Rule
+	public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort().dynamicHttpsPort()
+			.keystorePath(TestConstants.KEYSTORE_FILE).keystorePassword(String.valueOf(TestConstants.KEYSTORE_PWD()))
+			.keystoreType(TestConstants.KEYSTORE_TYPE));
 
-    @Test
-    public void testNotModified() throws Exception {
-        BlockingQueue<String> queue = new LinkedBlockingQueue<>();
-        List<ConfigurationListener> listeners = new ArrayList<>();
-        listeners.add(new TestConfigurationListener(queue, "log4j-test2.xml"));
-        TimeZone timeZone = TimeZone.getTimeZone("UTC");
-        Calendar now = Calendar.getInstance(timeZone);
-        Calendar previous = now;
-        previous.add(Calendar.MINUTE, -5);
-        Configuration configuration = new DefaultConfiguration();
-        Assume.assumeTrue(!IS_WINDOWS || Boolean.getBoolean(FORCE_RUN_KEY));
-        URL url = new URL("http://localhost:" + wireMockRule.port() + "/log4j-test2.xml");
-        StubMapping stubMapping = stubFor(get(urlPathEqualTo("/log4j-test2.xml"))
-            .willReturn(aResponse()
-                .withBodyFile(file)
-                .withStatus(304)
-                .withHeader("Last-Modified", formatter.format(now) + " GMT")
-                .withHeader("Content-Type", XML)));
-        final ConfigurationScheduler scheduler = new ConfigurationScheduler();
-        scheduler.incrementScheduledItems();
-        final WatchManager watchManager = new WatchManager(scheduler);
-        watchManager.setIntervalSeconds(1);
-        scheduler.start();
-        watchManager.start();
-        try {
-            watchManager.watch(new Source(url.toURI(), previous.getTimeInMillis()), new HttpWatcher(configuration, null,
-                listeners, previous.getTimeInMillis()));
-            final String str = queue.poll(2, TimeUnit.SECONDS);
-            assertNull("File changed.", str);
-        } finally {
-            removeStub(stubMapping);
-            watchManager.stop();
-            scheduler.stop();
-        }
-    }
+	@Test
+	public void testWatchManager() throws Exception {
+		BlockingQueue<String> queue = new LinkedBlockingQueue<>();
+		List<ConfigurationListener> listeners = new ArrayList<>();
+		listeners.add(mockConfigurationListener1(queue, "log4j-test1.xml"));
+		TimeZone timeZone = TimeZone.getTimeZone("UTC");
+		Calendar now = Calendar.getInstance(timeZone);
+		Calendar previous = now;
+		previous.add(Calendar.MINUTE, -5);
+		Configuration configuration = new DefaultConfiguration();
+		Assume.assumeTrue(!IS_WINDOWS || Boolean.getBoolean(FORCE_RUN_KEY));
+		URL url = new URL("http://localhost:" + wireMockRule.port() + "/log4j-test1.xml");
+		StubMapping stubMapping = stubFor(get(urlPathEqualTo("/log4j-test1.xml")).willReturn(aResponse()
+				.withBodyFile(file).withStatus(200).withHeader("Last-Modified", formatter.format(previous) + " GMT")
+				.withHeader("Content-Type", XML)));
+		final ConfigurationScheduler scheduler = new ConfigurationScheduler();
+		scheduler.incrementScheduledItems();
+		final WatchManager watchManager = new WatchManager(scheduler);
+		watchManager.setIntervalSeconds(1);
+		scheduler.start();
+		watchManager.start();
+		try {
+			watchManager.watch(new Source(url.toURI(), previous.getTimeInMillis()),
+					new HttpWatcher(configuration, null, listeners, previous.getTimeInMillis()));
+			final String str = queue.poll(2, TimeUnit.SECONDS);
+			assertNotNull("File change not detected", str);
+		} finally {
+			removeStub(stubMapping);
+			watchManager.stop();
+			scheduler.stop();
+		}
+	}
 
-    private class TestConfigurationListener implements ConfigurationListener {
-        private final Queue<String> queue;
-        private final String name;
-
-        public TestConfigurationListener(final Queue<String> queue, String name) {
-            this.queue = queue;
-            this.name = name;
-        }
-
-        @Override
-        public void onChange(Reconfigurable reconfigurable) {
-            //System.out.println("Reconfiguration detected for " + name);
-            queue.add(name);
-        }
-    }
+	@Test
+	public void testNotModified() throws Exception {
+		BlockingQueue<String> queue = new LinkedBlockingQueue<>();
+		List<ConfigurationListener> listeners = new ArrayList<>();
+		listeners.add(mockConfigurationListener1(queue, "log4j-test2.xml"));
+		TimeZone timeZone = TimeZone.getTimeZone("UTC");
+		Calendar now = Calendar.getInstance(timeZone);
+		Calendar previous = now;
+		previous.add(Calendar.MINUTE, -5);
+		Configuration configuration = new DefaultConfiguration();
+		Assume.assumeTrue(!IS_WINDOWS || Boolean.getBoolean(FORCE_RUN_KEY));
+		URL url = new URL("http://localhost:" + wireMockRule.port() + "/log4j-test2.xml");
+		StubMapping stubMapping = stubFor(
+				get(urlPathEqualTo("/log4j-test2.xml")).willReturn(aResponse().withBodyFile(file).withStatus(304)
+						.withHeader("Last-Modified", formatter.format(now) + " GMT").withHeader("Content-Type", XML)));
+		final ConfigurationScheduler scheduler = new ConfigurationScheduler();
+		scheduler.incrementScheduledItems();
+		final WatchManager watchManager = new WatchManager(scheduler);
+		watchManager.setIntervalSeconds(1);
+		scheduler.start();
+		watchManager.start();
+		try {
+			watchManager.watch(new Source(url.toURI(), previous.getTimeInMillis()),
+					new HttpWatcher(configuration, null, listeners, previous.getTimeInMillis()));
+			final String str = queue.poll(2, TimeUnit.SECONDS);
+			assertNull("File changed.", str);
+		} finally {
+			removeStub(stubMapping);
+			watchManager.stop();
+			scheduler.stop();
+		}
+	}
 }

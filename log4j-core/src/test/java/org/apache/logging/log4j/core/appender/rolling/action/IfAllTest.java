@@ -17,38 +17,58 @@
 
 package org.apache.logging.log4j.core.appender.rolling.action;
 
-import org.apache.logging.log4j.core.appender.rolling.action.IfAll;
-import org.apache.logging.log4j.core.appender.rolling.action.PathCondition;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-import static org.junit.Assert.*;
+import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
+
+import org.junit.Test;
 
 /**
  * Tests the And composite condition.
  */
 public class IfAllTest {
 
-    @Test
-    public void testAccept() {
-        final PathCondition TRUE = new FixedCondition(true);
-        final PathCondition FALSE = new FixedCondition(false);
-        assertTrue(IfAll.createAndCondition(TRUE, TRUE).accept(null, null, null));
-        assertFalse(IfAll.createAndCondition(FALSE, TRUE).accept(null, null, null));
-        assertFalse(IfAll.createAndCondition(TRUE, FALSE).accept(null, null, null));
-        assertFalse(IfAll.createAndCondition(FALSE, FALSE).accept(null, null, null));
-    }
-    
-    @Test
-    public void testEmptyIsFalse() {
-        assertFalse(IfAll.createAndCondition().accept(null, null, null));
-    }
-    
-    @Test
-    public void testBeforeTreeWalk() {
-        final CountingCondition counter = new CountingCondition(true);
-        final IfAll and = IfAll.createAndCondition(counter, counter, counter);
-        and.beforeFileTreeWalk();
-        assertEquals(3, counter.getBeforeFileTreeWalkCount());
-    }
+	@Test
+	public void testAccept() {
+		final PathCondition TRUE = FixedCondition.mockPathCondition1(true);
+		final PathCondition FALSE = FixedCondition.mockPathCondition1(false);
+		assertTrue(IfAll.createAndCondition(TRUE, TRUE).accept(null, null, null));
+		assertFalse(IfAll.createAndCondition(FALSE, TRUE).accept(null, null, null));
+		assertFalse(IfAll.createAndCondition(TRUE, FALSE).accept(null, null, null));
+		assertFalse(IfAll.createAndCondition(FALSE, FALSE).accept(null, null, null));
+	}
+
+	@Test
+	public void testEmptyIsFalse() {
+		assertFalse(IfAll.createAndCondition().accept(null, null, null));
+	}
+
+	@Test
+	public void testBeforeTreeWalk() {
+		final PathCondition counter = mock(PathCondition.class);
+		boolean counterAccept;
+		int[] counterBeforeFileTreeWalkCount = new int[1];
+		int[] counterAcceptCount = new int[1];
+		counterAccept = true;
+		doAnswer((stubInvo) -> {
+			counterBeforeFileTreeWalkCount[0]++;
+			return null;
+		}).when(counter).beforeFileTreeWalk();
+		when(counter.accept(any(Path.class), any(Path.class), any(BasicFileAttributes.class)))
+				.thenAnswer((stubInvo) -> {
+					counterAcceptCount[0]++;
+					return counterAccept;
+				});
+		final IfAll and = IfAll.createAndCondition(counter, counter, counter);
+		and.beforeFileTreeWalk();
+		assertEquals(3, counterBeforeFileTreeWalkCount[0]);
+	}
 
 }

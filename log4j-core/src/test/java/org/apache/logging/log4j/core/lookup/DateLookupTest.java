@@ -16,41 +16,38 @@
  */
 package org.apache.logging.log4j.core.lookup;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
+
 import java.util.Calendar;
 
 import org.apache.logging.log4j.core.AbstractLogEvent;
-import org.apache.logging.log4j.core.LogEvent;
 import org.junit.Test;
-
-import static org.junit.Assert.*;
 
 /**
  *
  */
 public class DateLookupTest {
 
+	public AbstractLogEvent mockAbstractLogEvent1() {
+		long mockFieldVariableSerialVersionUID = -2663819677970643109L;
+		AbstractLogEvent mockInstance = spy(AbstractLogEvent.class);
+		doAnswer((stubInvo) -> {
+			final Calendar cal = Calendar.getInstance();
+			cal.set(2011, 11, 30, 10, 56, 35);
+			return cal.getTimeInMillis();
+		}).when(mockInstance).getTimeMillis();
+		return mockInstance;
+	}
 
-    @Test
-    public void testLookup() {
-        final StrLookup lookup = new DateLookup();
-        final LogEvent event = new MyLogEvent();
-        final String value = lookup.lookup(event, "MM/dd/yyyy");
-        assertNotNull(value);
-        assertEquals("12/30/2011", value);
-    }
-
-    private class MyLogEvent extends AbstractLogEvent {
-        /**
-         * Generated serial version ID.
-         */
-        private static final long serialVersionUID = -2663819677970643109L;
-
-        @Override
-        public long getTimeMillis() {
-            final Calendar cal = Calendar.getInstance();
-            cal.set(2011, 11, 30, 10, 56, 35);
-            return cal.getTimeInMillis();
-        }
-
-    }
+	@Test
+	public void testLookup() {
+		final StrLookup lookup = new DateLookup();
+		final AbstractLogEvent event = mockAbstractLogEvent1();
+		final String value = lookup.lookup(event, "MM/dd/yyyy");
+		assertNotNull(value);
+		assertEquals("12/30/2011", value);
+	}
 }
