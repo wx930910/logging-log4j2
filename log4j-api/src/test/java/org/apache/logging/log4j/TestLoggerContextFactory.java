@@ -26,21 +26,21 @@ import org.apache.logging.log4j.spi.LoggerContextFactory;
  */
 public class TestLoggerContextFactory implements LoggerContextFactory {
 
-    private static LoggerContext context = new TestLoggerContext();
+	private static LoggerContext context = new TestLoggerContext();
 
-    @Override
-    public LoggerContext getContext(final String fqcn, final ClassLoader loader, final Object externalContext,
-                                    final boolean currentContext) {
-        return context;
-    }
+	@Override
+	public LoggerContext getContext(final String fqcn, final ClassLoader loader, final Object externalContext,
+			final boolean currentContext) {
+		return context;
+	}
 
-    @Override
-    public LoggerContext getContext(final String fqcn, final ClassLoader loader, final Object externalContext,
-                                    final boolean currentContext, final URI configLocation, final String name) {
-        return context;
-    }
+	@Override
+	public LoggerContext getContext(final String fqcn, final ClassLoader loader, final Object externalContext,
+			final boolean currentContext, final URI configLocation, final String name) {
+		return context;
+	}
 
-    @Override
-    public void removeContext(final LoggerContext context) {
-    }
+	@Override
+	public void removeContext(final LoggerContext context) {
+	}
 }
