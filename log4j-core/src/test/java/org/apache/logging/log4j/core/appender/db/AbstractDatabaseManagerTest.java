@@ -22,57 +22,38 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import java.io.Serializable;
 
 import org.apache.logging.log4j.core.LogEvent;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 public class AbstractDatabaseManagerTest {
-	// this stub is provided because mocking constructors is hard
-	private static class StubDatabaseManager extends AbstractDatabaseManager {
-
-		protected StubDatabaseManager(final String name, final int bufferSize) {
-			super(name, bufferSize);
+	public static AbstractDatabaseManager mockAbstractDatabaseManager1(final String name, final int bufferSize) {
+		AbstractDatabaseManager mockInstance = mock(AbstractDatabaseManager.class,
+				withSettings().useConstructor(name, bufferSize).defaultAnswer(Mockito.CALLS_REAL_METHODS));
+		try {
+			doReturn(true).when(mockInstance).shutdownInternal();
+			doReturn(true).when(mockInstance).commitAndClose();
+		} catch (Throwable exception) {
+			exception.printStackTrace();
 		}
-
-		@Override
-		protected boolean commitAndClose() {
-			return true;
-		}
-
-		@Override
-		protected void connectAndStart() {
-			// noop
-		}
-
-		@Override
-		protected boolean shutdownInternal() throws Exception {
-			return true;
-		}
-
-		@Override
-		protected void startupInternal() throws Exception {
-			// noop
-		}
-
-		@Override
-		protected void writeInternal(final LogEvent event, final Serializable serializable) {
-			// noop
-		}
-
+		return mockInstance;
 	}
 
 	private AbstractDatabaseManager manager;
 
 	public void setUp(final String name, final int buffer) {
-		manager = spy(new StubDatabaseManager(name, buffer));
+		manager = spy(AbstractDatabaseManagerTest.mockAbstractDatabaseManager1(name, buffer));
 	}
 
 	@Test
