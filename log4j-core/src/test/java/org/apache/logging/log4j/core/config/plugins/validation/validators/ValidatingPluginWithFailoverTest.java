@@ -20,9 +20,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyCollectionOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-
-import java.util.ArrayList;
-import java.util.List;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.Core;
@@ -39,6 +38,7 @@ import org.apache.logging.log4j.status.StatusListener;
 import org.apache.logging.log4j.status.StatusLogger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 public class ValidatingPluginWithFailoverTest {
 
@@ -67,8 +67,10 @@ public class ValidatingPluginWithFailoverTest {
 	}
 
 	@Test
-	public void testDoesNotLog_NoParameterThatMatchesElement_message() {
-		final StoringStatusListener listener = new StoringStatusListener();
+	public void testDoesNotLog_NoParameterThatMatchesElement_message() throws Exception {
+		final StatusListener listener = mock(StatusListener.class);
+		ArgumentCaptor<StatusData> listenerLogsCaptor = ArgumentCaptor.forClass(StatusData.class);
+		when(listener.getStatusLevel()).thenReturn(Level.WARN);
 		// @formatter:off
 		final PluginBuilder builder = new PluginBuilder(plugin).setConfiguration(new NullConfiguration())
 				.setConfigurationNode(node);
@@ -77,26 +79,8 @@ public class ValidatingPluginWithFailoverTest {
 
 		final FailoverAppender failoverAppender = (FailoverAppender) builder.build();
 
-		assertThat(listener.logs, emptyCollectionOf(StatusData.class));
+		assertThat(listenerLogsCaptor.getAllValues(), emptyCollectionOf(StatusData.class));
 		assertNotNull(failoverAppender);
 		assertEquals("Failover", failoverAppender.getName());
-	}
-
-	private static class StoringStatusListener implements StatusListener {
-		private final List<StatusData> logs = new ArrayList<>();
-
-		@Override
-		public void log(StatusData data) {
-			logs.add(data);
-		}
-
-		@Override
-		public Level getStatusLevel() {
-			return Level.WARN;
-		}
-
-		@Override
-		public void close() {
-		}
 	}
 }
