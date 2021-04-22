@@ -16,6 +16,12 @@
  */
 package org.apache.logging.log4j.test.appender;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 
@@ -25,61 +31,59 @@ import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.layout.ByteBufferDestination;
 
 /**
- * This appender is primarily used for testing. Use in a real environment is discouraged as the List could eventually
- * grow to cause an OutOfMemoryError.
+ * This appender is primarily used for testing. Use in a real environment is
+ * discouraged as the List could eventually grow to cause an OutOfMemoryError.
  *
- * This appender will use {@link Layout#encode(Object, ByteBufferDestination)} (and not
- * {@link Layout#toByteArray(LogEvent)}).
+ * This appender will use {@link Layout#encode(Object, ByteBufferDestination)}
+ * (and not {@link Layout#toByteArray(LogEvent)}).
  */
 public class EncodingListAppender extends ListAppender {
 
-    public EncodingListAppender(final String name) {
-        super(name);
-    }
+	public static ByteBufferDestination mockByteBufferDestination1() {
+		ByteBuffer mockFieldVariableByteBuffer = ByteBuffer.wrap(new byte[8192]);
+		ByteBufferDestination mockInstance = mock(ByteBufferDestination.class);
+		doAnswer((stubInvo) -> {
+			byte[] data = stubInvo.getArgument(0);
+			int offset = stubInvo.getArgument(1);
+			int length = stubInvo.getArgument(2);
+			mockFieldVariableByteBuffer.put(data, offset, length);
+			return null;
+		}).when(mockInstance).writeBytes(any(byte[].class), anyInt(), anyInt());
+		when(mockInstance.getByteBuffer()).thenAnswer((stubInvo) -> {
+			return mockFieldVariableByteBuffer;
+		});
+		doAnswer((stubInvo) -> {
+			ByteBuffer data = stubInvo.getArgument(0);
+			mockFieldVariableByteBuffer.put(data);
+			return null;
+		}).when(mockInstance).writeBytes(any(ByteBuffer.class));
+		when(mockInstance.drain(any(ByteBuffer.class)))
+				.thenThrow(new IllegalStateException("Unexpected message larger than 4096 bytes"));
+		return mockInstance;
+	}
 
-    public EncodingListAppender(final String name, final Filter filter, final Layout<? extends Serializable> layout,
-            final boolean newline, final boolean raw) {
-        super(name, filter, layout, newline, raw);
-    }
+	public EncodingListAppender(final String name) {
+		super(name);
+	}
 
-    private static class Destination implements ByteBufferDestination {
-        // JUnit 5 stack traces can start to get looooong
-        ByteBuffer byteBuffer = ByteBuffer.wrap(new byte[8192]);
+	public EncodingListAppender(final String name, final Filter filter, final Layout<? extends Serializable> layout,
+			final boolean newline, final boolean raw) {
+		super(name, filter, layout, newline, raw);
+	}
 
-        @Override
-        public ByteBuffer getByteBuffer() {
-            return byteBuffer;
-        }
-
-        @Override
-        public ByteBuffer drain(final ByteBuffer buf) {
-            throw new IllegalStateException("Unexpected message larger than 4096 bytes");
-        }
-
-        @Override
-        public void writeBytes(final ByteBuffer data) {
-            byteBuffer.put(data);
-        }
-
-        @Override
-        public void writeBytes(final byte[] data, final int offset, final int length) {
-            byteBuffer.put(data, offset, length);
-        }
-    }
-
-    @Override
-    public synchronized void append(final LogEvent event) {
-        final Layout<? extends Serializable> layout = getLayout();
-        if (layout == null) {
-            events.add(event);
-        } else {
-            final Destination content = new Destination();
-            layout.encode(event, content);
-            content.getByteBuffer().flip();
-            final byte[] record = new byte[content.getByteBuffer().remaining()];
-            content.getByteBuffer().get(record);
-            write(record);
-        }
-    }
+	@Override
+	public synchronized void append(final LogEvent event) {
+		final Layout<? extends Serializable> layout = getLayout();
+		if (layout == null) {
+			events.add(event);
+		} else {
+			final ByteBufferDestination content = EncodingListAppender.mockByteBufferDestination1();
+			layout.encode(event, content);
+			content.getByteBuffer().flip();
+			final byte[] record = new byte[content.getByteBuffer().remaining()];
+			content.getByteBuffer().get(record);
+			write(record);
+		}
+	}
 
 }
